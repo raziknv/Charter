@@ -68,6 +68,9 @@
     .options { display: grid; gap: 10px; }
     .options.cols-3 { grid-template-columns: repeat(3, 1fr); }
     .options.cols-2 { grid-template-columns: repeat(2, 1fr); }
+    .opt.full { grid-column: 1 / -1; }
+    .other-box { display: none; margin-top: 12px; }
+    .other-box.show { display: block; }
     .opt input { position: absolute; opacity: 0; pointer-events: none; }
     .opt span {
       display: block;
@@ -145,11 +148,25 @@
         </div>
 
         <div class="field">
+          <label class="title">സമ്മേളനത്തിന് പോകുന്നുണ്ടോ? <span class="req">*</span></label>
+          <div class="options cols-2">
+            <label class="opt"><input type="radio" name="attending" value="yes" /><span>ഉണ്ട്</span></label>
+            <label class="opt"><input type="radio" name="attending" value="no" /><span>ഇല്ല</span></label>
+          </div>
+          <div class="error" data-for="attending"></div>
+        </div>
+
+        <div class="field">
           <label class="title">നിങ്ങൾ പോകാൻ ഉദ്ദേശിക്കുന്ന തീയതി <span class="req">*</span></label>
           <div class="options cols-3">
             <label class="opt"><input type="radio" name="travel_day" value="thursday" /><span>വ്യാഴം<small>28/01/2027</small></span></label>
             <label class="opt"><input type="radio" name="travel_day" value="friday" /><span>വെള്ളി<small>29/01/2027</small></span></label>
             <label class="opt"><input type="radio" name="travel_day" value="saturday" /><span>ശനി<small>30/01/2027</small></span></label>
+            <label class="opt full"><input type="radio" name="travel_day" value="other" /><span>ഇതല്ലാത്ത ഒരു ദിവസം</span></label>
+          </div>
+          <div id="otherDayBox" class="other-box">
+            <label class="title" for="other_day">ഏത് ദിവസം <span class="req">*</span></label>
+            <input type="text" id="other_day" name="other_day" maxlength="100" placeholder="ഉദാ: 27/01/2027 ബുധൻ" />
           </div>
           <div class="error" data-for="travel_day"></div>
         </div>
@@ -198,6 +215,16 @@
     });
     phoneEl.addEventListener("input", () => { if (same.checked) waEl.value = phoneEl.value; });
 
+    const otherBox = document.getElementById("otherDayBox");
+    const otherEl = document.getElementById("other_day");
+    form.querySelectorAll('input[name="travel_day"]').forEach((r) =>
+      r.addEventListener("change", () => {
+        const isOther = r.value === "other" && r.checked;
+        otherBox.classList.toggle("show", isOther);
+        if (isOther) otherEl.focus();
+      })
+    );
+
     const clean = (v) => v.replace(/[\s\-()]/g, "");
     const phoneOk = (v) => /^\+?[0-9]{7,15}$/.test(v);
 
@@ -213,16 +240,20 @@
         name: form.name.value.trim(),
         phone: clean(phoneEl.value),
         whatsapp: clean(waEl.value),
+        attending: form.querySelector('input[name="attending"]:checked')?.value || "",
         travel_day: form.querySelector('input[name="travel_day"]:checked')?.value || "",
         trip_type: form.querySelector('input[name="trip_type"]:checked')?.value || "",
       };
+      data.other_day = data.travel_day === "other" ? otherEl.value.trim() : null;
 
       let ok = true;
       const check = (field, cond, text) => { setError(field, cond ? "" : text); if (!cond) ok = false; };
       check("name", data.name.length >= 2, "ദയവായി പേര് നൽകുക");
       check("phone", phoneOk(data.phone), "ശരിയായ ഫോൺ നമ്പർ നൽകുക");
       check("whatsapp", phoneOk(data.whatsapp), "ശരിയായ വാട്സാപ്പ് നമ്പർ നൽകുക");
+      check("attending", !!data.attending, "ദയവായി ഉണ്ട് / ഇല്ല തിരഞ്ഞെടുക്കുക");
       check("travel_day", !!data.travel_day, "ഒരു തീയതി തിരഞ്ഞെടുക്കുക");
+      if (data.travel_day === "other") check("travel_day", !!data.other_day, "ഏത് ദിവസം എന്ന് എഴുതുക");
       check("trip_type", !!data.trip_type, "വൺ വേ / റിട്ടേൺ തിരഞ്ഞെടുക്കുക");
       if (!ok) return;
 
