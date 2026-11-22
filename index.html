@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ml">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>സമസ്ത സെന്റിനറി - ചാർട്ടർ ഫ്ലൈറ്റ്</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Malayalam:wght@400;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --green: #0f6b4f;
+      --green-dark: #0a4d39;
+      --gold: #c9a227;
+      --bg: #f3f7f5;
+      --text: #1c2b26;
+      --muted: #5f706a;
+      --err: #c0392b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Noto Sans Malayalam", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    .wrap { max-width: 520px; margin: 0 auto; padding: 16px; }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.06);
+      overflow: hidden;
+    }
+    header {
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+      color: #fff;
+      padding: 24px 20px;
+      text-align: center;
+    }
+    header h1 { margin: 0 0 6px; font-size: 1.35rem; }
+    header .dates { font-weight: 600; font-size: 1.05rem; }
+    header .days { opacity: .9; font-size: .95rem; }
+    .rate {
+      margin-top: 12px;
+      display: inline-block;
+      background: rgba(255,255,255,.15);
+      border: 1px solid var(--gold);
+      border-radius: 10px;
+      padding: 6px 12px;
+      font-size: .95rem;
+    }
+    form { padding: 20px; }
+    .field { margin-bottom: 18px; }
+    label.title { display: block; font-weight: 600; margin-bottom: 6px; }
+    .req { color: var(--err); }
+    input[type="text"], input[type="tel"] {
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 1rem;
+      font-family: inherit;
+      border: 1.5px solid #cfdad5;
+      border-radius: 10px;
+      outline: none;
+      transition: border-color .15s;
+    }
+    input:focus { border-color: var(--green); }
+    .check { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: .9rem; color: var(--muted); }
+    .options { display: grid; gap: 10px; }
+    .options.cols-3 { grid-template-columns: repeat(3, 1fr); }
+    .options.cols-2 { grid-template-columns: repeat(2, 1fr); }
+    .opt input { position: absolute; opacity: 0; pointer-events: none; }
+    .opt span {
+      display: block;
+      text-align: center;
+      padding: 12px 6px;
+      border: 1.5px solid #cfdad5;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all .15s;
+    }
+    .opt span small { display: block; font-weight: 400; color: var(--muted); font-size: .8rem; }
+    .opt input:checked + span {
+      border-color: var(--green);
+      background: #e6f3ee;
+      color: var(--green-dark);
+    }
+    .opt input:focus-visible + span { outline: 2px solid var(--gold); }
+    .error { color: var(--err); font-size: .85rem; margin-top: 4px; min-height: 1em; }
+    button {
+      width: 100%;
+      padding: 14px;
+      font-size: 1.05rem;
+      font-family: inherit;
+      font-weight: 700;
+      color: #fff;
+      background: var(--green);
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+    }
+    button:hover { background: var(--green-dark); }
+    button:disabled { opacity: .6; cursor: wait; }
+    .msg { padding: 12px; border-radius: 10px; margin-top: 14px; display: none; }
+    .msg.err { display: block; background: #fdecea; color: var(--err); }
+    .success { padding: 40px 20px; text-align: center; display: none; }
+    .success .tick {
+      width: 64px; height: 64px; margin: 0 auto 12px;
+      border-radius: 50%; background: #e6f3ee; color: var(--green);
+      display: flex; align-items: center; justify-content: center; font-size: 2rem;
+    }
+    .note { text-align: center; color: var(--muted); font-size: .8rem; margin-top: 14px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <header>
+        <h1>✈️ സമസ്ത സെന്റിനറി - ചാർട്ടർ ഫ്ലൈറ്റ്</h1>
+        <div class="dates">28/01/2027 - 31/01/2027</div>
+        <div class="days">വ്യാഴം മുതൽ ഞായർ വരെ</div>
+        <div class="rate">ഏകദേശ റേറ്റ് : വൺ വേ ~80 റിയാൽ / റിട്ടേൺ ~150 റിയാൽ</div>
+      </header>
+
+      <form id="surveyForm" novalidate>
+        <div class="field">
+          <label class="title" for="name">പേര് <span class="req">*</span></label>
+          <input type="text" id="name" name="name" autocomplete="name" maxlength="100" />
+          <div class="error" data-for="name"></div>
+        </div>
+
+        <div class="field">
+          <label class="title" for="phone">ഫോൺ നമ്പർ <span class="req">*</span></label>
+          <input type="tel" id="phone" name="phone" inputmode="tel" placeholder="+968 9XXXXXXX" />
+          <div class="error" data-for="phone"></div>
+        </div>
+
+        <div class="field">
+          <label class="title" for="whatsapp">വാട്സാപ്പ് നമ്പർ <span class="req">*</span></label>
+          <input type="tel" id="whatsapp" name="whatsapp" inputmode="tel" placeholder="+968 9XXXXXXX" />
+          <label class="check">
+            <input type="checkbox" id="sameAsPhone" /> ഫോൺ നമ്പർ തന്നെ
+          </label>
+          <div class="error" data-for="whatsapp"></div>
+        </div>
+
+        <div class="field">
+          <label class="title">നിങ്ങൾ പോകാൻ ഉദ്ദേശിക്കുന്ന തീയതി <span class="req">*</span></label>
+          <div class="options cols-3">
+            <label class="opt"><input type="radio" name="travel_day" value="thursday" /><span>വ്യാഴം<small>28/01/2027</small></span></label>
+            <label class="opt"><input type="radio" name="travel_day" value="friday" /><span>വെള്ളി<small>29/01/2027</small></span></label>
+            <label class="opt"><input type="radio" name="travel_day" value="saturday" /><span>ശനി<small>30/01/2027</small></span></label>
+          </div>
+          <div class="error" data-for="travel_day"></div>
+        </div>
+
+        <div class="field">
+          <label class="title">യാത്രാ തരം <span class="req">*</span></label>
+          <div class="options cols-2">
+            <label class="opt"><input type="radio" name="trip_type" value="one_way" /><span>വൺ വേ<small>~80 റിയാൽ</small></span></label>
+            <label class="opt"><input type="radio" name="trip_type" value="return" /><span>റിട്ടേൺ<small>~150 റിയാൽ</small></span></label>
+          </div>
+          <div class="error" data-for="trip_type"></div>
+        </div>
+
+        <button type="submit" id="submitBtn">സമർപ്പിക്കുക</button>
+        <div class="msg" id="formMsg"></div>
+        <p class="note">ഇത് ഒരു സർവേ മാത്രമാണ്. റേറ്റ് ഏകദേശമാണ്, മാറ്റം വരാം.</p>
+      </form>
+
+      <div class="success" id="successBox">
+        <div class="tick">✓</div>
+        <h2>നന്ദി!</h2>
+        <p>നിങ്ങളുടെ വിവരങ്ങൾ ലഭിച്ചു. കൂടുതൽ വിവരങ്ങൾ വാട്സാപ്പ് വഴി അറിയിക്കുന്നതാണ്.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ====== CONFIG: paste your Supabase project values here ======
+    // Supabase → Project Settings → API (or "Connect")
+    const SUPABASE_URL = "https://gidmzqizatyvlexvrukj.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdpZG16cWl6YXR5dmxleHZydWtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQxMDcxNzMsImV4cCI6MjEwOTY4MzE3M30.v6w5vaLDNagiiJxNJV_08NDs92UohI-Dts1CJMDKnJU";
+    // =============================================================
+
+    const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const form = document.getElementById("surveyForm");
+    const btn = document.getElementById("submitBtn");
+    const msg = document.getElementById("formMsg");
+    const phoneEl = document.getElementById("phone");
+    const waEl = document.getElementById("whatsapp");
+    const same = document.getElementById("sameAsPhone");
+
+    same.addEventListener("change", () => {
+      if (same.checked) waEl.value = phoneEl.value;
+      waEl.readOnly = same.checked;
+    });
+    phoneEl.addEventListener("input", () => { if (same.checked) waEl.value = phoneEl.value; });
+
+    const clean = (v) => v.replace(/[\s\-()]/g, "");
+    const phoneOk = (v) => /^\+?[0-9]{7,15}$/.test(v);
+
+    function setError(field, text) {
+      form.querySelector(`.error[data-for="${field}"]`).textContent = text || "";
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      msg.className = "msg";
+
+      const data = {
+        name: form.name.value.trim(),
+        phone: clean(phoneEl.value),
+        whatsapp: clean(waEl.value),
+        travel_day: form.querySelector('input[name="travel_day"]:checked')?.value || "",
+        trip_type: form.querySelector('input[name="trip_type"]:checked')?.value || "",
+      };
+
+      let ok = true;
+      const check = (field, cond, text) => { setError(field, cond ? "" : text); if (!cond) ok = false; };
+      check("name", data.name.length >= 2, "ദയവായി പേര് നൽകുക");
+      check("phone", phoneOk(data.phone), "ശരിയായ ഫോൺ നമ്പർ നൽകുക");
+      check("whatsapp", phoneOk(data.whatsapp), "ശരിയായ വാട്സാപ്പ് നമ്പർ നൽകുക");
+      check("travel_day", !!data.travel_day, "ഒരു തീയതി തിരഞ്ഞെടുക്കുക");
+      check("trip_type", !!data.trip_type, "വൺ വേ / റിട്ടേൺ തിരഞ്ഞെടുക്കുക");
+      if (!ok) return;
+
+      btn.disabled = true;
+      btn.textContent = "സമർപ്പിക്കുന്നു...";
+
+      const { error } = await db.from("charter_survey").insert(data);
+
+      if (error) {
+        console.error(error);
+        msg.textContent = "ക്ഷമിക്കണം, എന്തോ പിശക് സംഭവിച്ചു. വീണ്ടും ശ്രമിക്കുക.";
+        msg.className = "msg err";
+        btn.disabled = false;
+        btn.textContent = "സമർപ്പിക്കുക";
+        return;
+      }
+
+      form.style.display = "none";
+      document.getElementById("successBox").style.display = "block";
+    });
+  </script>
+</body>
+</html>
