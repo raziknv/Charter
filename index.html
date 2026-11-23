@@ -49,6 +49,23 @@
       padding: 6px 12px;
       font-size: .95rem;
     }
+    .edit-bar {
+      background: #fff8e1;
+      border-bottom: 1px solid #f0e2b0;
+      padding: 12px 20px;
+      font-size: .92rem;
+      text-align: center;
+    }
+    .link-btn {
+      background: none; border: none; padding: 0; width: auto;
+      color: var(--green-dark); font: inherit; font-weight: 700;
+      text-decoration: underline; cursor: pointer;
+    }
+    .link-btn:hover { background: none; }
+    .panel { padding: 20px; border-bottom: 1px solid #e3ebe7; background: #fafcfb; display: none; }
+    .panel.show { display: block; }
+    .panel h3 { margin: 0 0 4px; font-size: 1.05rem; }
+    .panel p { margin: 0 0 14px; color: var(--muted); font-size: .88rem; }
     form { padding: 20px; }
     .field { margin-bottom: 18px; }
     label.title { display: block; font-weight: 600; margin-bottom: 6px; }
@@ -62,8 +79,10 @@
       border-radius: 10px;
       outline: none;
       transition: border-color .15s;
+      background: #fff;
     }
     input:focus { border-color: var(--green); }
+    input[readonly] { background: #eef3f1; color: var(--muted); }
     .check { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: .9rem; color: var(--muted); }
     .options { display: grid; gap: 10px; }
     .options.cols-3 { grid-template-columns: repeat(3, 1fr); }
@@ -104,8 +123,10 @@
     }
     button:hover { background: var(--green-dark); }
     button:disabled { opacity: .6; cursor: wait; }
-    .msg { padding: 12px; border-radius: 10px; margin-top: 14px; display: none; }
+    button.secondary { background: #fff; color: var(--green-dark); border: 1.5px solid var(--green); margin-top: 10px; }
+    .msg { padding: 12px; border-radius: 10px; margin-top: 14px; display: none; font-size: .92rem; }
     .msg.err { display: block; background: #fdecea; color: var(--err); }
+    .msg.info { display: block; background: #e6f3ee; color: var(--green-dark); margin: 0 0 18px; }
     .success { padding: 40px 20px; text-align: center; display: none; }
     .success .tick {
       width: 64px; height: 64px; margin: 0 auto 12px;
@@ -125,7 +146,31 @@
         <div class="rate">ഏകദേശ റേറ്റ് : വൺ വേ ~80 റിയാൽ / റിട്ടേൺ ~150 റിയാൽ</div>
       </header>
 
+      <div class="edit-bar" id="editBar">
+        മുമ്പ് രജിസ്റ്റർ ചെയ്തിട്ടുണ്ടോ? വിവരങ്ങൾ മാറ്റാൻ
+        <button type="button" class="link-btn" id="openLookup">ഇവിടെ ക്ലിക്ക് ചെയ്യുക</button>
+      </div>
+
+      <!-- Lookup panel for existing registrations -->
+      <div class="panel" id="lookupPanel">
+        <h3>രജിസ്ട്രേഷൻ മാറ്റം വരുത്താൻ</h3>
+        <p>രജിസ്റ്റർ ചെയ്യുമ്പോൾ നൽകിയ ഫോൺ നമ്പറും വാട്സാപ്പ് നമ്പറും നൽകുക.</p>
+        <div class="field">
+          <label class="title" for="lk_phone">ഫോൺ നമ്പർ</label>
+          <input type="tel" id="lk_phone" inputmode="tel" placeholder="+968 9XXXXXXX" />
+        </div>
+        <div class="field">
+          <label class="title" for="lk_whatsapp">വാട്സാപ്പ് നമ്പർ</label>
+          <input type="tel" id="lk_whatsapp" inputmode="tel" placeholder="+968 9XXXXXXX" />
+        </div>
+        <button type="button" id="lookupBtn">വിവരങ്ങൾ എടുക്കുക</button>
+        <button type="button" class="secondary" id="closeLookup">പുതിയ രജിസ്ട്രേഷൻ</button>
+        <div class="msg" id="lookupMsg"></div>
+      </div>
+
       <form id="surveyForm" novalidate>
+        <div class="msg" id="editNotice"></div>
+
         <div class="field">
           <label class="title" for="name">പേര് <span class="req">*</span></label>
           <input type="text" id="name" name="name" autocomplete="name" maxlength="100" />
@@ -141,7 +186,7 @@
         <div class="field">
           <label class="title" for="whatsapp">വാട്സാപ്പ് നമ്പർ <span class="req">*</span></label>
           <input type="tel" id="whatsapp" name="whatsapp" inputmode="tel" placeholder="+968 9XXXXXXX" />
-          <label class="check">
+          <label class="check" id="sameWrap">
             <input type="checkbox" id="sameAsPhone" /> ഫോൺ നമ്പർ തന്നെ
           </label>
           <div class="error" data-for="whatsapp"></div>
@@ -200,19 +245,19 @@
         </div>
 
         <button type="submit" id="submitBtn">സമർപ്പിക്കുക</button>
+        <button type="button" class="secondary" id="cancelEdit" style="display:none">റദ്ദാക്കുക</button>
         <div class="msg" id="formMsg"></div>
-        <p class="note">ഇത് ഒരു സർവേ മാത്രമാണ്. റേറ്റ് ഏകദേശമാണ്, മാറ്റം വരാം.</p>
+        <p class="note">ഇത് ഒരു സർവേ മാത്രമാണ്. റേറ്റ് ഏകദേശമാണ്, മാറ്റം വരാം.<br>ഒരു ഫോൺ നമ്പറിൽ ഒരു രജിസ്ട്രേഷൻ മാത്രം.</p>
       </form>
 
       <div class="success" id="successBox">
         <div class="tick">✓</div>
-        <h2>നന്ദി!</h2>
-        <p>നിങ്ങളുടെ വിവരങ്ങൾ ലഭിച്ചു. കൂടുതൽ വിവരങ്ങൾ വാട്സാപ്പ് വഴി അറിയിക്കുന്നതാണ്.</p>
+        <h2 id="successTitle">നന്ദി!</h2>
+        <p id="successText">നിങ്ങളുടെ വിവരങ്ങൾ ലഭിച്ചു. കൂടുതൽ വിവരങ്ങൾ വാട്സാപ്പ് വഴി അറിയിക്കുന്നതാണ്.</p>
       </div>
     </div>
   </div>
 
-  
   <script>
     // ====== CONFIG: paste your Supabase project values here ======
     // Supabase → Project Settings → API (or "Connect")
@@ -222,91 +267,186 @@
 
     const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const form = document.getElementById("surveyForm");
-    const btn = document.getElementById("submitBtn");
-    const msg = document.getElementById("formMsg");
-    const phoneEl = document.getElementById("phone");
-    const waEl = document.getElementById("whatsapp");
-    const same = document.getElementById("sameAsPhone");
+    const $ = (id) => document.getElementById(id);
+    const form = $("surveyForm");
+    const btn = $("submitBtn");
+    const msg = $("formMsg");
+    const phoneEl = $("phone");
+    const waEl = $("whatsapp");
+    const same = $("sameAsPhone");
+    const otherBox = $("otherDayBox");
+    const otherEl = $("other_day");
+    const returnBox = $("returnBox");
+    let editMode = false;
 
+    // ---------- helpers ----------
+    const clean = (v) => v.replace(/[^\d+]/g, "");
+    const phoneOk = (v) => /^\+?[0-9]{7,15}$/.test(v);
+    const radio = (name) => form.querySelector(`input[name="${name}"]:checked`)?.value || "";
+    const setRadio = (name, value) => {
+      form.querySelectorAll(`input[name="${name}"]`).forEach((r) => (r.checked = r.value === value));
+    };
+    const setError = (field, text) => {
+      form.querySelector(`.error[data-for="${field}"]`).textContent = text || "";
+    };
+    const showMsg = (el, text, cls) => { el.textContent = text; el.className = "msg " + cls; };
+    const hideMsg = (el) => { el.className = "msg"; };
+    const refreshToggles = () => {
+      otherBox.classList.toggle("show", radio("travel_day") === "other");
+      returnBox.classList.toggle("show", radio("trip_type") === "return");
+    };
+
+    // ---------- same-as-phone ----------
     same.addEventListener("change", () => {
       if (same.checked) waEl.value = phoneEl.value;
       waEl.readOnly = same.checked;
     });
     phoneEl.addEventListener("input", () => { if (same.checked) waEl.value = phoneEl.value; });
 
-    const otherBox = document.getElementById("otherDayBox");
-    const otherEl = document.getElementById("other_day");
-    form.querySelectorAll('input[name="travel_day"]').forEach((r) =>
+    // ---------- conditional fields ----------
+    form.querySelectorAll('input[name="travel_day"], input[name="trip_type"]').forEach((r) =>
       r.addEventListener("change", () => {
-        const isOther = r.value === "other" && r.checked;
-        otherBox.classList.toggle("show", isOther);
-        if (isOther) otherEl.focus();
+        refreshToggles();
+        if (r.value === "other" && r.checked) otherEl.focus();
       })
     );
 
-    const returnBox = document.getElementById("returnBox");
-    form.querySelectorAll('input[name="trip_type"]').forEach((r) =>
-      r.addEventListener("change", () => {
-        returnBox.classList.toggle("show", r.value === "return" && r.checked);
-      })
-    );
+    // ---------- edit mode: lookup ----------
+    $("openLookup").addEventListener("click", () => {
+      $("lookupPanel").classList.add("show");
+      $("editBar").style.display = "none";
+      $("lk_phone").focus();
+    });
+    $("closeLookup").addEventListener("click", () => exitEdit());
+    $("cancelEdit").addEventListener("click", () => exitEdit());
 
-    const clean = (v) => v.replace(/[\s\-()]/g, "");
-    const phoneOk = (v) => /^\+?[0-9]{7,15}$/.test(v);
+    $("lookupBtn").addEventListener("click", async () => {
+      const lkMsg = $("lookupMsg");
+      const p = clean($("lk_phone").value);
+      const w = clean($("lk_whatsapp").value);
+      if (!phoneOk(p) || !phoneOk(w)) {
+        showMsg(lkMsg, "ശരിയായ ഫോൺ നമ്പറും വാട്സാപ്പ് നമ്പറും നൽകുക", "err");
+        return;
+      }
+      const b = $("lookupBtn");
+      b.disabled = true; b.textContent = "തിരയുന്നു...";
+      const { data, error } = await db.rpc("get_registration", { p_phone: p, p_whatsapp: w });
+      b.disabled = false; b.textContent = "വിവരങ്ങൾ എടുക്കുക";
 
-    function setError(field, text) {
-      form.querySelector(`.error[data-for="${field}"]`).textContent = text || "";
+      if (error) { console.error(error); showMsg(lkMsg, "പിശക് സംഭവിച്ചു. വീണ്ടും ശ്രമിക്കുക.", "err"); return; }
+      if (!data) {
+        showMsg(lkMsg, "ഈ നമ്പറുകളിൽ രജിസ്ട്രേഷൻ കണ്ടെത്തിയില്ല. രജിസ്റ്റർ ചെയ്തപ്പോൾ നൽകിയ അതേ നമ്പറുകൾ നൽകുക.", "err");
+        return;
+      }
+      enterEdit(data);
+    });
+
+    function enterEdit(r) {
+      editMode = true;
+      hideMsg($("lookupMsg"));
+      $("lookupPanel").classList.remove("show");
+
+      form.reset();
+      form.querySelectorAll(".error").forEach((e) => (e.textContent = ""));
+      $("name").value = r.name || "";
+      phoneEl.value = "+" + r.phone;
+      waEl.value = "+" + r.whatsapp;
+      phoneEl.readOnly = true;
+      waEl.readOnly = true;
+      $("sameWrap").style.display = "none";
+      setRadio("attending", r.attending);
+      setRadio("travel_day", r.travel_day);
+      otherEl.value = r.other_day || "";
+      setRadio("sector", r.sector);
+      setRadio("trip_type", r.trip_type);
+      setRadio("return_date", r.return_date);
+      refreshToggles();
+
+      showMsg($("editNotice"), `${r.name}, നിങ്ങളുടെ രജിസ്ട്രേഷൻ താഴെ കാണാം. ആവശ്യമായ മാറ്റങ്ങൾ വരുത്തി "പുതുക്കുക" അമർത്തുക.`, "info");
+      btn.textContent = "പുതുക്കുക";
+      $("cancelEdit").style.display = "block";
+      form.scrollIntoView({ behavior: "smooth" });
     }
 
+    function exitEdit() {
+      editMode = false;
+      form.reset();
+      form.querySelectorAll(".error").forEach((e) => (e.textContent = ""));
+      phoneEl.readOnly = false;
+      waEl.readOnly = false;
+      $("sameWrap").style.display = "";
+      hideMsg($("editNotice"));
+      hideMsg($("lookupMsg"));
+      hideMsg(msg);
+      $("lookupPanel").classList.remove("show");
+      $("editBar").style.display = "";
+      $("cancelEdit").style.display = "none";
+      btn.textContent = "സമർപ്പിക്കുക";
+      refreshToggles();
+    }
+
+    // ---------- submit ----------
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      msg.className = "msg";
+      hideMsg(msg);
 
-      const data = {
-        name: form.name.value.trim(),
+      const d = {
+        name: $("name").value.trim(),
         phone: clean(phoneEl.value),
         whatsapp: clean(waEl.value),
-        attending: form.querySelector('input[name="attending"]:checked')?.value || "",
-        travel_day: form.querySelector('input[name="travel_day"]:checked')?.value || "",
-        trip_type: form.querySelector('input[name="trip_type"]:checked')?.value || "",
-        sector: form.querySelector('input[name="sector"]:checked')?.value || "",
+        attending: radio("attending"),
+        travel_day: radio("travel_day"),
+        sector: radio("sector"),
+        trip_type: radio("trip_type"),
       };
-      data.return_date = data.trip_type === "return"
-        ? (form.querySelector('input[name="return_date"]:checked')?.value || "")
-        : null;
-      data.other_day = data.travel_day === "other" ? otherEl.value.trim() : null;
+      d.other_day = d.travel_day === "other" ? otherEl.value.trim() : null;
+      d.return_date = d.trip_type === "return" ? radio("return_date") : null;
 
       let ok = true;
-      const check = (field, cond, text) => { setError(field, cond ? "" : text); if (!cond) ok = false; };
-      check("name", data.name.length >= 2, "ദയവായി പേര് നൽകുക");
-      check("phone", phoneOk(data.phone), "ശരിയായ ഫോൺ നമ്പർ നൽകുക");
-      check("whatsapp", phoneOk(data.whatsapp), "ശരിയായ വാട്സാപ്പ് നമ്പർ നൽകുക");
-      check("attending", !!data.attending, "ദയവായി ഉണ്ട് / ഇല്ല തിരഞ്ഞെടുക്കുക");
-      check("travel_day", !!data.travel_day, "ഒരു തീയതി തിരഞ്ഞെടുക്കുക");
-      if (data.travel_day === "other") check("travel_day", !!data.other_day, "ഏത് ദിവസം എന്ന് എഴുതുക");
-      check("sector", !!data.sector, "കോഴിക്കോട് / കൊച്ചി തിരഞ്ഞെടുക്കുക");
-      check("trip_type", !!data.trip_type, "വൺ വേ / റിട്ടേൺ തിരഞ്ഞെടുക്കുക");
-      setError("return_date", "");
-      if (data.trip_type === "return") check("return_date", !!data.return_date, "റിട്ടേൺ തീയതി തിരഞ്ഞെടുക്കുക");
+      const check = (field, cond, text) => { if (!cond) { setError(field, text); ok = false; } };
+      ["name","phone","whatsapp","attending","travel_day","sector","trip_type","return_date"].forEach((f) => setError(f, ""));
+      check("name", d.name.length >= 2, "ദയവായി പേര് നൽകുക");
+      check("phone", phoneOk(d.phone), "ശരിയായ ഫോൺ നമ്പർ നൽകുക");
+      check("whatsapp", phoneOk(d.whatsapp), "ശരിയായ വാട്സാപ്പ് നമ്പർ നൽകുക");
+      check("attending", !!d.attending, "ദയവായി ഉണ്ട് / ഇല്ല തിരഞ്ഞെടുക്കുക");
+      check("travel_day", !!d.travel_day, "ഒരു തീയതി തിരഞ്ഞെടുക്കുക");
+      if (d.travel_day === "other") check("travel_day", !!d.other_day, "ഏത് ദിവസം എന്ന് എഴുതുക");
+      check("sector", !!d.sector, "കോഴിക്കോട് / കൊച്ചി തിരഞ്ഞെടുക്കുക");
+      check("trip_type", !!d.trip_type, "വൺ വേ / റിട്ടേൺ തിരഞ്ഞെടുക്കുക");
+      if (d.trip_type === "return") check("return_date", !!d.return_date, "റിട്ടേൺ തീയതി തിരഞ്ഞെടുക്കുക");
       if (!ok) return;
 
       btn.disabled = true;
+      const label = btn.textContent;
       btn.textContent = "സമർപ്പിക്കുന്നു...";
 
-      const { error } = await db.from("charter_survey").insert(data);
+      const { data, error } = await db.rpc("submit_registration", {
+        p_name: d.name, p_phone: d.phone, p_whatsapp: d.whatsapp,
+        p_attending: d.attending, p_travel_day: d.travel_day, p_other_day: d.other_day,
+        p_sector: d.sector, p_trip_type: d.trip_type, p_return_date: d.return_date,
+      });
+
+      btn.disabled = false;
+      btn.textContent = label;
 
       if (error) {
         console.error(error);
-        msg.textContent = "ക്ഷമിക്കണം, എന്തോ പിശക് സംഭവിച്ചു. വീണ്ടും ശ്രമിക്കുക.";
-        msg.className = "msg err";
-        btn.disabled = false;
-        btn.textContent = "സമർപ്പിക്കുക";
+        showMsg(msg, "ക്ഷമിക്കണം, എന്തോ പിശക് സംഭവിച്ചു. വീണ്ടും ശ്രമിക്കുക.", "err");
+        return;
+      }
+      if (data === "mismatch") {
+        showMsg(msg, "ഈ ഫോൺ നമ്പർ ഇതിനകം രജിസ്റ്റർ ചെയ്തിട്ടുണ്ട്. വിവരങ്ങൾ മാറ്റാൻ, ആദ്യം നൽകിയ അതേ വാട്സാപ്പ് നമ്പർ നൽകുക. സംശയമുണ്ടെങ്കിൽ സംഘാടകരെ ബന്ധപ്പെടുക.", "err");
         return;
       }
 
+      if (data === "updated") {
+        $("successTitle").textContent = "പുതുക്കി!";
+        $("successText").textContent = "നിങ്ങളുടെ രജിസ്ട്രേഷൻ വിജയകരമായി പുതുക്കി. നന്ദി.";
+      }
       form.style.display = "none";
-      document.getElementById("successBox").style.display = "block";
+      $("editBar").style.display = "none";
+      $("lookupPanel").classList.remove("show");
+      $("successBox").style.display = "block";
     });
   </script>
 </body>
