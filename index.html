@@ -172,12 +172,31 @@
         </div>
 
         <div class="field">
+          <label class="title">സെക്ടർ <span class="req">*</span></label>
+          <div class="options cols-2">
+            <label class="opt"><input type="radio" name="sector" value="kozhikode" /><span>കോഴിക്കോട്</span></label>
+            <label class="opt"><input type="radio" name="sector" value="kochi" /><span>കൊച്ചി</span></label>
+          </div>
+          <div class="error" data-for="sector"></div>
+        </div>
+
+        <div class="field">
           <label class="title">യാത്രാ തരം <span class="req">*</span></label>
           <div class="options cols-2">
             <label class="opt"><input type="radio" name="trip_type" value="one_way" /><span>വൺ വേ<small>~80 റിയാൽ</small></span></label>
             <label class="opt"><input type="radio" name="trip_type" value="return" /><span>റിട്ടേൺ<small>~150 റിയാൽ</small></span></label>
           </div>
           <div class="error" data-for="trip_type"></div>
+        </div>
+
+        <div class="field other-box" id="returnBox">
+          <label class="title">റിട്ടേൺ തീയതി <span class="req">*</span></label>
+          <div class="options cols-3">
+            <label class="opt"><input type="radio" name="return_date" value="2027-02-01" /><span>01<small>ഫെബ്രുവരി 2027</small></span></label>
+            <label class="opt"><input type="radio" name="return_date" value="2027-02-02" /><span>02<small>ഫെബ്രുവരി 2027</small></span></label>
+            <label class="opt"><input type="radio" name="return_date" value="2027-02-03" /><span>03<small>ഫെബ്രുവരി 2027</small></span></label>
+          </div>
+          <div class="error" data-for="return_date"></div>
         </div>
 
         <button type="submit" id="submitBtn">സമർപ്പിക്കുക</button>
@@ -193,6 +212,7 @@
     </div>
   </div>
 
+  
   <script>
     // ====== CONFIG: paste your Supabase project values here ======
     // Supabase → Project Settings → API (or "Connect")
@@ -225,6 +245,13 @@
       })
     );
 
+    const returnBox = document.getElementById("returnBox");
+    form.querySelectorAll('input[name="trip_type"]').forEach((r) =>
+      r.addEventListener("change", () => {
+        returnBox.classList.toggle("show", r.value === "return" && r.checked);
+      })
+    );
+
     const clean = (v) => v.replace(/[\s\-()]/g, "");
     const phoneOk = (v) => /^\+?[0-9]{7,15}$/.test(v);
 
@@ -243,7 +270,11 @@
         attending: form.querySelector('input[name="attending"]:checked')?.value || "",
         travel_day: form.querySelector('input[name="travel_day"]:checked')?.value || "",
         trip_type: form.querySelector('input[name="trip_type"]:checked')?.value || "",
+        sector: form.querySelector('input[name="sector"]:checked')?.value || "",
       };
+      data.return_date = data.trip_type === "return"
+        ? (form.querySelector('input[name="return_date"]:checked')?.value || "")
+        : null;
       data.other_day = data.travel_day === "other" ? otherEl.value.trim() : null;
 
       let ok = true;
@@ -254,7 +285,10 @@
       check("attending", !!data.attending, "ദയവായി ഉണ്ട് / ഇല്ല തിരഞ്ഞെടുക്കുക");
       check("travel_day", !!data.travel_day, "ഒരു തീയതി തിരഞ്ഞെടുക്കുക");
       if (data.travel_day === "other") check("travel_day", !!data.other_day, "ഏത് ദിവസം എന്ന് എഴുതുക");
+      check("sector", !!data.sector, "കോഴിക്കോട് / കൊച്ചി തിരഞ്ഞെടുക്കുക");
       check("trip_type", !!data.trip_type, "വൺ വേ / റിട്ടേൺ തിരഞ്ഞെടുക്കുക");
+      setError("return_date", "");
+      if (data.trip_type === "return") check("return_date", !!data.return_date, "റിട്ടേൺ തീയതി തിരഞ്ഞെടുക്കുക");
       if (!ok) return;
 
       btn.disabled = true;
