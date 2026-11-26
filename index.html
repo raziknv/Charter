@@ -70,7 +70,7 @@
     .field { margin-bottom: 18px; }
     label.title { display: block; font-weight: 600; margin-bottom: 6px; }
     .req { color: var(--err); }
-    input[type="text"], input[type="tel"] {
+    input[type="text"], input[type="tel"], select {
       width: 100%;
       padding: 12px 14px;
       font-size: 1rem;
@@ -81,7 +81,7 @@
       transition: border-color .15s;
       background: #fff;
     }
-    input:focus { border-color: var(--green); }
+    input:focus, select:focus { border-color: var(--green); }
     input[readonly] { background: #eef3f1; color: var(--muted); }
     .check { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: .9rem; color: var(--muted); }
     .options { display: grid; gap: 10px; }
@@ -193,6 +193,14 @@
         </div>
 
         <div class="field">
+          <label class="title" for="region">റീജിയൻ <span class="req">*</span></label>
+          <select id="region" name="region">
+            <option value="">-- തിരഞ്ഞെടുക്കുക --</option>
+          </select>
+          <div class="error" data-for="region"></div>
+        </div>
+
+        <div class="field">
           <label class="title">സമ്മേളനത്തിന് പോകുന്നുണ്ടോ? <span class="req">*</span></label>
           <div class="options cols-2">
             <label class="opt"><input type="radio" name="attending" value="yes" /><span>ഉണ്ട്</span></label>
@@ -258,6 +266,7 @@
     </div>
   </div>
 
+
   <script>
     // ====== CONFIG: paste your Supabase project values here ======
     // Supabase → Project Settings → API (or "Connect")
@@ -295,6 +304,21 @@
       otherBox.classList.toggle("show", radio("travel_day") === "other");
       returnBox.classList.toggle("show", radio("trip_type") === "return");
     };
+
+    // ---------- region dropdown (names come from Supabase) ----------
+    const regionEl = $("region");
+    let pendingRegion = null;   // region to select once the list has loaded (edit mode)
+    async function loadRegions() {
+      const { data, error } = await db.rpc("get_regions");
+      if (error) { console.error(error); return; }
+      (data || []).forEach((name) => {
+        const o = document.createElement("option");
+        o.value = name; o.textContent = name;
+        regionEl.appendChild(o);
+      });
+      if (pendingRegion) regionEl.value = pendingRegion;
+    }
+    loadRegions();
 
     // ---------- same-as-phone ----------
     same.addEventListener("change", () => {
@@ -354,6 +378,8 @@
       phoneEl.readOnly = true;
       waEl.readOnly = true;
       $("sameWrap").style.display = "none";
+      pendingRegion = r.region || "";
+      regionEl.value = pendingRegion;
       setRadio("attending", r.attending);
       setRadio("travel_day", r.travel_day);
       otherEl.value = r.other_day || "";
@@ -370,6 +396,7 @@
 
     function exitEdit() {
       editMode = false;
+      pendingRegion = null;
       form.reset();
       form.querySelectorAll(".error").forEach((e) => (e.textContent = ""));
       phoneEl.readOnly = false;
@@ -394,6 +421,7 @@
         name: $("name").value.trim(),
         phone: clean(phoneEl.value),
         whatsapp: clean(waEl.value),
+        region: regionEl.value,
         attending: radio("attending"),
         travel_day: radio("travel_day"),
         sector: radio("sector"),
@@ -404,10 +432,11 @@
 
       let ok = true;
       const check = (field, cond, text) => { if (!cond) { setError(field, text); ok = false; } };
-      ["name","phone","whatsapp","attending","travel_day","sector","trip_type","return_date"].forEach((f) => setError(f, ""));
+      ["name","phone","whatsapp","region","attending","travel_day","sector","trip_type","return_date"].forEach((f) => setError(f, ""));
       check("name", d.name.length >= 2, "ദയവായി പേര് നൽകുക");
       check("phone", phoneOk(d.phone), "ശരിയായ ഫോൺ നമ്പർ നൽകുക");
       check("whatsapp", phoneOk(d.whatsapp), "ശരിയായ വാട്സാപ്പ് നമ്പർ നൽകുക");
+      check("region", !!d.region, "റീജിയൻ തിരഞ്ഞെടുക്കുക");
       check("attending", !!d.attending, "ദയവായി ഉണ്ട് / ഇല്ല തിരഞ്ഞെടുക്കുക");
       check("travel_day", !!d.travel_day, "ഒരു തീയതി തിരഞ്ഞെടുക്കുക");
       if (d.travel_day === "other") check("travel_day", !!d.other_day, "ഏത് ദിവസം എന്ന് എഴുതുക");
@@ -421,7 +450,7 @@
       btn.textContent = "സമർപ്പിക്കുന്നു...";
 
       const { data, error } = await db.rpc("submit_registration", {
-        p_name: d.name, p_phone: d.phone, p_whatsapp: d.whatsapp,
+        p_name: d.name, p_phone: d.phone, p_whatsapp: d.whatsapp, p_region: d.region,
         p_attending: d.attending, p_travel_day: d.travel_day, p_other_day: d.other_day,
         p_sector: d.sector, p_trip_type: d.trip_type, p_return_date: d.return_date,
       });
