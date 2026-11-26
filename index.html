@@ -265,7 +265,6 @@
     </div>
   </div>
 
-
   <script>
     // ====== CONFIG: paste your Supabase project values here ======
     // Supabase → Project Settings → API (or "Connect")
@@ -309,8 +308,12 @@
     let pendingRegion = null;   // region to select once the list has loaded (edit mode)
     async function loadRegions() {
       const { data, error } = await db.rpc("get_regions");
-      if (error) { console.error(error); return; }
-      (data || []).forEach((name) => {
+      if (error || !data || !data.length) {
+        console.error(error || "No regions in the regions table");
+        setError("region", "റീജിയൻ ലിസ്റ്റ് ലോഡ് ആയില്ല. പേജ് റീഫ്രഷ് ചെയ്യുക.");
+        return;
+      }
+      data.forEach((name) => {
         const o = document.createElement("option");
         o.value = name; o.textContent = name;
         regionEl.appendChild(o);
