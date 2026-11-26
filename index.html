@@ -65,6 +65,8 @@
     .panel { padding: 20px; border-bottom: 1px solid #e3ebe7; background: #fafcfb; display: none; }
     .panel.show { display: block; }
     .panel h3 { margin: 0 0 4px; font-size: 1.05rem; }
+    #lookupChoices button { margin-top: 10px; text-align: left; }
+    #lookupChoices small { font-weight: 400; opacity: .85; }
     .panel p { margin: 0 0 14px; color: var(--muted); font-size: .88rem; }
     form { padding: 20px; }
     .field { margin-bottom: 18px; }
@@ -154,18 +156,15 @@
       <!-- Lookup panel for existing registrations -->
       <div class="panel" id="lookupPanel">
         <h3>രജിസ്ട്രേഷൻ മാറ്റം വരുത്താൻ</h3>
-        <p>രജിസ്റ്റർ ചെയ്യുമ്പോൾ നൽകിയ ഫോൺ നമ്പറും വാട്സാപ്പ് നമ്പറും നൽകുക.</p>
+        <p>രജിസ്റ്റർ ചെയ്യുമ്പോൾ നൽകിയ ഫോൺ നമ്പറോ വാട്സാപ്പ് നമ്പറോ നൽകുക.</p>
         <div class="field">
-          <label class="title" for="lk_phone">ഫോൺ നമ്പർ</label>
-          <input type="tel" id="lk_phone" inputmode="tel" placeholder="+968 9XXXXXXX" />
-        </div>
-        <div class="field">
-          <label class="title" for="lk_whatsapp">വാട്സാപ്പ് നമ്പർ</label>
-          <input type="tel" id="lk_whatsapp" inputmode="tel" placeholder="+968 9XXXXXXX" />
+          <label class="title" for="lk_number">ഫോൺ / വാട്സാപ്പ് നമ്പർ</label>
+          <input type="tel" id="lk_number" inputmode="tel" placeholder="+968 9XXXXXXX" />
         </div>
         <button type="button" id="lookupBtn">വിവരങ്ങൾ എടുക്കുക</button>
         <button type="button" class="secondary" id="closeLookup">പുതിയ രജിസ്ട്രേഷൻ</button>
         <div class="msg" id="lookupMsg"></div>
+        <div id="lookupChoices"></div>
       </div>
 
       <form id="surveyForm" novalidate>
@@ -339,35 +338,52 @@
     $("openLookup").addEventListener("click", () => {
       $("lookupPanel").classList.add("show");
       $("editBar").style.display = "none";
-      $("lk_phone").focus();
+      $("lk_number").focus();
     });
     $("closeLookup").addEventListener("click", () => exitEdit());
     $("cancelEdit").addEventListener("click", () => exitEdit());
 
+    $("lk_number").addEventListener("keydown", (e) => { if (e.key === "Enter") $("lookupBtn").click(); });
+
     $("lookupBtn").addEventListener("click", async () => {
       const lkMsg = $("lookupMsg");
-      const p = clean($("lk_phone").value);
-      const w = clean($("lk_whatsapp").value);
-      if (!phoneOk(p) || !phoneOk(w)) {
-        showMsg(lkMsg, "ശരിയായ ഫോൺ നമ്പറും വാട്സാപ്പ് നമ്പറും നൽകുക", "err");
+      const choices = $("lookupChoices");
+      choices.innerHTML = "";
+      const n = clean($("lk_number").value);
+      if (!phoneOk(n)) {
+        showMsg(lkMsg, "ശരിയായ ഫോൺ / വാട്സാപ്പ് നമ്പർ നൽകുക", "err");
         return;
       }
       const b = $("lookupBtn");
       b.disabled = true; b.textContent = "തിരയുന്നു...";
-      const { data, error } = await db.rpc("get_registration", { p_phone: p, p_whatsapp: w });
+      const { data, error } = await db.rpc("get_registration", { p_number: n });
       b.disabled = false; b.textContent = "വിവരങ്ങൾ എടുക്കുക";
 
       if (error) { console.error(error); showMsg(lkMsg, "പിശക് സംഭവിച്ചു. വീണ്ടും ശ്രമിക്കുക.", "err"); return; }
-      if (!data) {
-        showMsg(lkMsg, "ഈ നമ്പറുകളിൽ രജിസ്ട്രേഷൻ കണ്ടെത്തിയില്ല. രജിസ്റ്റർ ചെയ്തപ്പോൾ നൽകിയ അതേ നമ്പറുകൾ നൽകുക.", "err");
+      const list = data || [];
+      if (!list.length) {
+        showMsg(lkMsg, "ഈ നമ്പറിൽ രജിസ്ട്രേഷൻ കണ്ടെത്തിയില്ല. രജിസ്റ്റർ ചെയ്തപ്പോൾ നൽകിയ നമ്പർ നൽകുക.", "err");
         return;
       }
-      enterEdit(data);
+      if (list.length === 1) { enterEdit(list[0]); return; }
+
+      // Several people share this WhatsApp number → let them pick
+      showMsg(lkMsg, "ഈ നമ്പറിൽ ഒന്നിലധികം രജിസ്ട്രേഷൻ ഉണ്ട്. നിങ്ങളുടേത് തിരഞ്ഞെടുക്കുക:", "info");
+      list.forEach((r) => {
+        const btnEl = document.createElement("button");
+        btnEl.type = "button";
+        btnEl.className = "secondary";
+        btnEl.innerHTML = "";
+        btnEl.append(r.name, Object.assign(document.createElement("small"), { textContent: "  · ഫോൺ ••••" + String(r.phone).slice(-4) }));
+        btnEl.addEventListener("click", () => enterEdit(r));
+        choices.appendChild(btnEl);
+      });
     });
 
     function enterEdit(r) {
       editMode = true;
       hideMsg($("lookupMsg"));
+      $("lookupChoices").innerHTML = "";
       $("lookupPanel").classList.remove("show");
 
       form.reset();
@@ -376,7 +392,7 @@
       phoneEl.value = "+" + r.phone;
       waEl.value = "+" + r.whatsapp;
       phoneEl.readOnly = true;
-      waEl.readOnly = true;
+      waEl.readOnly = false;   // WhatsApp number can be changed; phone number identifies the entry
       $("sameWrap").style.display = "none";
       pendingRegion = r.region || "";
       regionEl.value = pendingRegion;
@@ -404,6 +420,7 @@
       $("sameWrap").style.display = "";
       hideMsg($("editNotice"));
       hideMsg($("lookupMsg"));
+      $("lookupChoices").innerHTML = "";
       hideMsg(msg);
       $("lookupPanel").classList.remove("show");
       $("editBar").style.display = "";
